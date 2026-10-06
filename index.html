@@ -385,10 +385,10 @@
           state.reminders = [...remote, ...localOnly];
           saveState();
         }
-        async function syncPushSubscription() {
-          if (!cloud || !("serviceWorker" in navigator) || !("PushManager" in window) ||
+        async function ensureDevicePushSubscription() {
+          if (!("serviceWorker" in navigator) || !("PushManager" in window) ||
               !("Notification" in window) || Notification.permission !== "granted" ||
-              !config.vapidPublicKey) return;
+              !config.vapidPublicKey) throw new Error("Le notifiche push non sono disponibili su questo dispositivo.");
           const registration = await navigator.serviceWorker.ready;
           let subscription = await registration.pushManager.getSubscription();
           if (!subscription) {
@@ -397,6 +397,12 @@
               applicationServerKey: urlBase64ToUint8Array(config.vapidPublicKey)
             });
           }
+          return subscription;
+      }
+      async function syncPushSubscription() {
+          if (!cloud?.userId || !config.vapidPublicKey || !("Notification" in window) ||
+              Notification.permission !== "granted") return;
+          const subscription = await ensureDevicePushSubscription();
           const json = subscription.toJSON();
           const { error } = await cloud.client.from("push_subscriptions").upsert({
             user_id: cloud.userId,
@@ -700,6 +706,7 @@
           const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
           renderNotifications();
           if (permission === "granted") {
+            await ensureDevicePushSubscription();
             await initializeCloud();
             await syncPushSubscription();
             renderNotifications();
