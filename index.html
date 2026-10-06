@@ -4,7 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f5f6f3">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Le mie finanze">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icon.svg">
   <title>Le mie finanze</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./config.js"></script>
   <style>
     :root {
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -217,9 +225,9 @@
         <section class="panel">
           <div class="panel-head"><div><div class="panel-title">Promemoria</div><div class="panel-description">Bollette e scadenze da ricordare</div></div><button class="budget-edit" id="add-reminder">＋ Aggiungi</button></div>
           <div class="reminder-list" id="reminder-list"></div>
-          <div class="reminder-footer"><div class="notification-status"><div class="notification-copy" id="notification-copy"><strong>Notifiche del browser</strong>Attivale per ricevere avvisi</div><button class="btn btn-light" id="enable-notifications">Attiva</button></div></div>
+          <div class="reminder-footer"><div class="notification-status"><div class="notification-copy" id="notification-copy"><strong>Notifiche del telefono</strong>Installa l'app e attiva le notifiche push.</div><button class="btn btn-light" id="enable-notifications">Attiva</button></div></div>
         </section>
-        <section class="panel"><div class="quick-tips"><strong>I tuoi dati restano privati.</strong><br>Le operazioni e i promemoria vengono salvati nel browser di questo dispositivo. Esporta periodicamente una copia di sicurezza.</div><div style="padding:0 17px 15px"><button class="btn btn-light" id="export-data" style="width:100%">Esporta dati CSV</button></div></section>
+        <section class="panel"><div class="quick-tips"><strong>I tuoi dati restano privati.</strong><br>Entrate, uscite e budget restano sul dispositivo. Solo i promemoria sono sincronizzati online per poter inviare notifiche push. Esporta periodicamente una copia di sicurezza.</div><div style="padding:0 17px 15px"><button class="btn btn-light" id="export-data" style="width:100%">Esporta dati CSV</button></div></section>
       </aside>
     </div>
   </main>
@@ -279,6 +287,10 @@
       let selectedMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       let state = loadState();
       let reminderTimer;
+      let cloud = null;
+      let pushReady = false;
+      const config = window.APP_CONFIG || {};
+      const cloudConfigured = Boolean(config.supabaseUrl && config.supabaseAnonKey);
 
       function loadState() {
         try {
@@ -307,6 +319,108 @@
           console.error("Non è stato possibile salvare i dati.", error);
           toast("Salvataggio non riuscito: controlla lo spazio disponibile nel browser.");
           return false;
+        }
+        function localReminderFromCloud(item) {
+          const due = new Date(item.due_at);
+          return {
+            id: item.id,
+            title: item.title,
+            date: localDate(due),
+            time: `${String(due.getHours()).padStart(2, "0")}:${String(due.getMinutes()).padStart(2, "0")}`,
+            amount: item.amount === null ? null : Number(item.amount),
+            notifiedAt: item.notified_at,
+            updatedAt: item.updated_at
+          };
+        }
+        function cloudReminderFromLocal(item) {
+          return {
+            id: item.id,
+            user_id: cloud.userId,
+            title: item.title,
+            due_at: reminderDateTime(item).toISOString(),
+            amount: item.amount,
+            notified_at: item.notifiedAt || null,
+            updated_at: new Date().toISOString()
+          };
+        }
+        async function initializeCloud() {
+          if (!cloudConfigured || !window.supabase?.createClient) return;
+          cloud = { client: null, userId: null };
+          try {
+            cloud.client = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+            const { data: sessionData, error: sessionError } = await cloud.client.auth.getSession();
+            if (sessionError) throw sessionError;
+            let session = sessionData.session;
+            if (!session) {
+              const { data, error } = await cloud.client.auth.signInAnonymously();
+              if (error) throw error;
+              session = data.session;
+            }
+            if (!session?.user?.id) throw new Error("Sessione personale non disponibile.");
+            cloud.userId = session.user.id;
+            await syncRemindersFromCloud();
+            await syncPushSubscription();
+            renderReminders();
+            renderNotifications();
+          } catch (error) {
+            console.error("Sincronizzazione dei promemoria non riuscita.", error);
+            toast("Non riesco a collegarmi ai promemoria online. Controlla la configurazione e la connessione.");
+            renderNotifications();
+          }
+        }
+        async function syncRemindersFromCloud() {
+          const { data, error } = await cloud.client
+            .from("reminders")
+            .select("id,title,due_at,amount,notified_at,updated_at")
+            .order("due_at");
+          if (error) throw error;
+          const remote = data.map(localReminderFromCloud);
+          const remoteIds = new Set(remote.map(item => item.id));
+          const localOnly = state.reminders.filter(item => !remoteIds.has(item.id));
+          if (localOnly.length) {
+            const { error: uploadError } = await cloud.client.from("reminders").upsert(localOnly.map(cloudReminderFromLocal));
+            if (uploadError) throw uploadError;
+          }
+          state.reminders = [...remote, ...localOnly];
+          saveState();
+        }
+        async function syncPushSubscription() {
+          if (!cloud || !("serviceWorker" in navigator) || !("PushManager" in window) ||
+              !("Notification" in window) || Notification.permission !== "granted" ||
+              !config.vapidPublicKey) return;
+          const registration = await navigator.serviceWorker.ready;
+          let subscription = await registration.pushManager.getSubscription();
+          if (!subscription) {
+            subscription = await registration.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(config.vapidPublicKey)
+            });
+          }
+          const json = subscription.toJSON();
+          const { error } = await cloud.client.from("push_subscriptions").upsert({
+            user_id: cloud.userId,
+            endpoint: json.endpoint,
+            p256dh: json.keys.p256dh,
+            auth: json.keys.auth
+          }, { onConflict: "user_id,endpoint" });
+          if (error) throw error;
+          pushReady = true;
+        }
+        function urlBase64ToUint8Array(value) {
+          const padding = "=".repeat((4 - value.length % 4) % 4);
+          const binary = atob((value + padding).replace(/-/g, "+").replace(/_/g, "/"));
+          return Uint8Array.from(binary, char => char.charCodeAt(0));
+        }
+        async function saveReminderToCloud(reminder) {
+          if (!cloud) return;
+          if (!pushReady) throw new Error("Attiva le notifiche push su questo telefono prima di salvare promemoria online.");
+          const { error } = await cloud.client.from("reminders").upsert(cloudReminderFromLocal(reminder));
+          if (error) throw error;
+        }
+        async function deleteReminderFromCloud(id) {
+          if (!cloud) return;
+          const { error } = await cloud.client.from("reminders").delete().eq("id", id);
+          if (error) throw error;
         }
       }
       function toast(message) {
@@ -393,18 +507,30 @@
         const copy = document.getElementById("notification-copy");
         const button = document.getElementById("enable-notifications");
         if (!("Notification" in window)) {
-          copy.innerHTML = "<strong>Notifiche non supportate</strong>Il browser non supporta le notifiche.";
+          copy.innerHTML = "<strong>Notifiche non supportate</strong>Prova ad aggiungere l’app alla schermata Home.";
           button.hidden = true;
-        } else if (Notification.permission === "granted") {
-          copy.innerHTML = "<strong>Notifiche attive</strong>Gli avvisi appaiono quando questa pagina è aperta.";
+        } else if (!cloudConfigured) {
+          copy.innerHTML = "<strong>Push non ancora configurate</strong>Completa prima la configurazione Supabase.";
+          button.textContent = "Da configurare";
+          button.disabled = true;
+        } else if (!config.vapidPublicKey || !cloud) {
+          copy.innerHTML = "<strong>Push non ancora pronte</strong>Completa la configurazione del servizio online.";
+          button.textContent = "Da configurare";
+          button.disabled = true;
+        } else if (pushReady) {
+          copy.innerHTML = "<strong>Notifiche push attive</strong>Gli avvisi arrivano anche con l’app chiusa.";
           button.textContent = "Attive";
           button.disabled = true;
+        } else if (Notification.permission === "granted") {
+          copy.innerHTML = "<strong>Permesso concesso</strong>Completa l’iscrizione alle notifiche push.";
+          button.textContent = "Completa";
+          button.disabled = false;
         } else if (Notification.permission === "denied") {
           copy.innerHTML = "<strong>Notifiche bloccate</strong>Puoi abilitarle dalle impostazioni del browser.";
           button.textContent = "Bloccate";
           button.disabled = true;
         } else {
-          copy.innerHTML = "<strong>Notifiche del browser</strong>Attivale per ricevere avvisi.";
+          copy.innerHTML = "<strong>Notifiche del telefono</strong>Installa l’app e attiva le notifiche push.";
           button.textContent = "Attiva";
           button.disabled = false;
         }
@@ -427,7 +553,7 @@
         document.getElementById(id).hidden = true;
       }
       function checkReminders() {
-        if (!("Notification" in window) || Notification.permission !== "granted") return;
+        if (cloudConfigured || !("Notification" in window) || Notification.permission !== "granted") return;
         const now = Date.now();
         let changed = false;
         for (const reminder of state.reminders) {
@@ -529,11 +655,19 @@
         if (reminderDateTime(reminder) <= new Date()) { toast("Scegli una data e un’ora future."); return; }
         state.reminders.push(reminder);
         if (saveState()) {
-          closeModal("reminder-modal");
-          event.target.reset();
-          document.getElementById("reminder-time").value = "09:00";
-          renderReminders();
-          toast("Promemoria salvato.");
+          saveReminderToCloud(reminder).then(() => {
+            closeModal("reminder-modal");
+            event.target.reset();
+            document.getElementById("reminder-time").value = "09:00";
+            renderReminders();
+            toast(cloud ? "Promemoria salvato e sincronizzato." : "Promemoria salvato su questo dispositivo.");
+          }).catch(error => {
+            console.error("Salvataggio online del promemoria non riuscito.", error);
+            state.reminders = state.reminders.filter(item => item.id !== reminder.id);
+            saveState();
+            renderReminders();
+            toast(error.message || "Non è stato possibile sincronizzare il promemoria.");
+          });
         }
       });
       document.getElementById("reminder-list").addEventListener("click", event => {
@@ -541,21 +675,38 @@
         const remove = event.target.closest("[data-delete-reminder]");
         if (!done && !remove) return;
         const id = (done || remove).dataset.dismissReminder || (done || remove).dataset.deleteReminder;
-        state.reminders = state.reminders.filter(item => item.id !== id);
-        if (saveState()) renderReminders();
+        const previous = state.reminders;
+        state.reminders = previous.filter(item => item.id !== id);
+        if (saveState()) {
+          renderReminders();
+          deleteReminderFromCloud(id).catch(error => {
+            console.error("Eliminazione online del promemoria non riuscita.", error);
+            state.reminders = previous;
+            saveState();
+            renderReminders();
+            toast("Non è stato possibile eliminare il promemoria online.");
+          });
+        }
       });
       document.getElementById("enable-notifications").addEventListener("click", async () => {
-        if (!("Notification" in window)) { toast("Questo browser non supporta le notifiche."); return; }
+        if (!cloudConfigured || !config.vapidPublicKey) { toast("Le notifiche push non sono ancora configurate."); return; }
+        if (!("serviceWorker" in navigator) || !("PushManager" in window)) { toast("Installa l’app dal browser del telefono per attivare le notifiche push."); return; }
+        if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !("standalone" in navigator && navigator.standalone) && !matchMedia("(display-mode: standalone)").matches) {
+          toast("Su iPhone aggiungi prima l’app alla schermata Home, poi aprila da lì.");
+          return;
+        }
         try {
-          const permission = await Notification.requestPermission();
+          const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
           renderNotifications();
           if (permission === "granted") {
-            toast("Notifiche attivate. Tieni aperta questa pagina per ricevere gli avvisi.");
-            startReminderChecks();
+            await initializeCloud();
+            await syncPushSubscription();
+            renderNotifications();
+            toast("Notifiche push attivate su questo telefono.");
           } else if (permission === "denied") toast("Permesso negato. Puoi abilitarlo dalle impostazioni del browser.");
         } catch (error) {
           console.error("Richiesta di notifica non riuscita.", error);
-          toast("Non è stato possibile attivare le notifiche.");
+          toast("Non è stato possibile attivare le notifiche. Verifica la configurazione.");
         }
       });
       document.getElementById("export-data").addEventListener("click", () => {
@@ -581,6 +732,14 @@
         if (event.key === "Escape") document.querySelectorAll(".modal-backdrop:not([hidden])").forEach(modal => closeModal(modal.id));
       });
       document.addEventListener("visibilitychange", () => { if (!document.hidden) checkReminders(); });
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("./sw.js").then(() => initializeCloud()).catch(error => {
+          console.error("Registrazione della app offline non riuscita.", error);
+          initializeCloud();
+        });
+      } else {
+        initializeCloud();
+      }
       updateCategories();
       render();
       startReminderChecks();
