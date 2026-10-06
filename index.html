@@ -345,6 +345,7 @@
         }
         async function initializeCloud() {
           if (!cloudConfigured || !window.supabase?.createClient) return;
+          if (cloud?.userId) return;
           cloud = { client: null, userId: null };
           try {
             cloud.client = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
