@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f6f3">
+  <title>Le mie finanze</title>
+  <style>
+    :root {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #1d2a23;
+      background: #f5f6f3;
+      font-synthesis: none;
+      --green: #266247;
+      --green-dark: #1d5039;
+      --green-soft: #e9f2eb;
+      --muted: #849087;
+      --line: #e8ece7;
+      --white: #fff;
+      --red: #c7635c;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    .app { width: min(1380px, 100%); margin: auto; padding: 25px 34px 45px; }
+    header { height: 53px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 29px; }
+    .brand { display: flex; align-items: center; gap: 11px; }
+    .logo { display: grid; place-items: center; width: 41px; height: 41px; border-radius: 14px; color: white; background: var(--green); }
+    .logo svg { width: 21px; }
+    .brand-title { font-size: 15px; font-weight: 760; letter-spacing: -.35px; }
+    .brand-subtitle { color: var(--muted); font-size: 10px; margin-top: 3px; }
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+    .privacy { color: #728077; font-size: 11px; display: flex; align-items: center; gap: 6px; }
+    .privacy svg { width: 15px; color: var(--green); }
+    .btn { border: 0; border-radius: 11px; padding: 11px 15px; font-size: 11px; font-weight: 700; transition: background .16s, transform .16s; }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary { color: white; background: var(--green); }
+    .btn-primary:hover { background: var(--green-dark); }
+    .btn-light { color: #56635a; background: white; border: 1px solid var(--line); }
+    .page-heading { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin: 0 1px 23px; }
+    .eyebrow { color: var(--green); font-size: 10px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 7px; }
+    h1 { margin: 0; font-size: clamp(25px, 3vw, 32px); letter-spacing: -1.1px; }
+    .page-heading p { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
+    .month-picker { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border: 1px solid var(--line); background: white; border-radius: 11px; }
+    .month-picker button { width: 26px; height: 27px; padding: 0; border: 0; border-radius: 7px; background: #f5f7f4; color: #56645b; font-size: 15px; }
+    .month-picker span { min-width: 104px; text-align: center; font-weight: 700; font-size: 11px; text-transform: capitalize; }
+    .summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; margin-bottom: 17px; }
+    .summary-card { position: relative; overflow: hidden; min-height: 120px; padding: 17px 18px; border: 1px solid var(--line); border-radius: 16px; background: white; }
+    .summary-card.balance { color: white; background: var(--green); border-color: var(--green); }
+    .summary-top { display: flex; align-items: center; justify-content: space-between; color: #768179; font-size: 11px; font-weight: 600; }
+    .balance .summary-top { color: #d3e2d6; }
+    .summary-icon { width: 30px; height: 30px; display: grid; place-items: center; color: var(--green); background: var(--green-soft); border-radius: 10px; }
+    .summary-icon svg { width: 16px; height: 16px; }
+    .balance .summary-icon { color: white; background: #ffffff23; }
+    .summary-value { margin-top: 11px; font-size: 25px; font-weight: 780; letter-spacing: -.8px; }
+    .summary-card:not(.balance) .summary-value.expense { color: var(--red); }
+    .summary-caption { margin-top: 4px; color: #a0a9a2; font-size: 10px; }
+    .balance .summary-caption { color: #c6d9cc; }
+    .content-grid { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; align-items: start; }
+    .left-column, .right-column { display: grid; gap: 16px; }
+    .panel { border: 1px solid var(--line); border-radius: 16px; background: white; }
+    .panel-head { min-height: 57px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 17px; border-bottom: 1px solid #eff1ee; }
+    .panel-title { font-size: 13px; font-weight: 750; letter-spacing: -.2px; }
+    .panel-description { color: var(--muted); font-size: 10px; margin-top: 3px; }
+    .panel-body { padding: 15px 17px 17px; }
+    .budget-row { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 10px; }
+    .budget-label { font-size: 11px; color: #66736a; }
+    .budget-value { font-size: 11px; font-weight: 700; }
+    .progress { height: 8px; border-radius: 9px; background: #edf0ec; overflow: hidden; }
+    .progress > span { display: block; height: 100%; width: 0; border-radius: inherit; background: #83b28f; transition: width .25s; }
+    .progress > span.over { background: #d87a6d; }
+    .budget-note { margin-top: 9px; font-size: 10px; color: var(--muted); }
+    .budget-edit { border: 0; background: none; color: var(--green); font-size: 10px; font-weight: 750; padding: 6px; }
+    .chart { display: flex; align-items: end; justify-content: space-around; gap: 8px; height: 133px; padding-top: 14px; }
+    .chart-column { min-width: 29px; flex: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: end; gap: 7px; }
+    .chart-track { height: 96px; width: min(100%, 33px); display: flex; align-items: end; overflow: hidden; border-radius: 6px 6px 3px 3px; background: #f1f4f0; }
+    .chart-bar { width: 100%; min-height: 0; background: #77a988; border-radius: 6px 6px 2px 2px; transition: height .2s; }
+    .chart-column.current .chart-bar { background: var(--green); }
+    .chart-label { color: #919b93; font-size: 9px; text-transform: capitalize; }
+    .transactions-toolbar { display: flex; align-items: center; gap: 9px; }
+    .filter-select { border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px; background: white; color: #66736a; font-size: 10px; }
+    .transaction-list { padding: 2px 17px; }
+    .transaction { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; min-height: 61px; border-bottom: 1px solid #f0f2ef; }
+    .transaction:last-child { border-bottom: 0; }
+    .transaction-icon { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; background: #f2f5f1; font-size: 15px; }
+    .transaction-name { font-size: 11px; font-weight: 700; }
+    .transaction-meta { margin-top: 4px; color: #99a29b; font-size: 9px; }
+    .transaction-amount { font-size: 11px; font-weight: 750; white-space: nowrap; }
+    .transaction-amount.income { color: #388256; }
+    .transaction-delete { border: 0; width: 27px; height: 27px; color: #a1aaa3; background: transparent; border-radius: 7px; font-size: 16px; }
+    .transaction-delete:hover { color: var(--red); background: #fcf0ef; }
+    .empty { padding: 30px 16px; text-align: center; color: #8d988f; font-size: 11px; }
+    .empty strong { display: block; color: #56635a; margin-bottom: 5px; }
+    .reminder-list { padding: 3px 15px 9px; }
+    .reminder { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 11px 0; border-bottom: 1px solid #f0f2ef; }
+    .reminder:last-child { border: 0; }
+    .reminder-icon { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 10px; color: #8b6429; background: #fcf4e7; font-size: 14px; }
+    .reminder-title { font-size: 10px; font-weight: 750; }
+    .reminder-date { margin-top: 4px; color: #929c94; font-size: 9px; }
+    .reminder-amount { font-size: 10px; font-weight: 700; text-align: right; }
+    .reminder-buttons { display: flex; gap: 3px; }
+    .reminder-buttons button { padding: 5px; border: 0; color: #8a958d; background: transparent; border-radius: 6px; font-size: 12px; }
+    .reminder-buttons button:hover { background: #f1f4f0; color: var(--green); }
+    .reminder-past { color: var(--red); }
+    .reminder-footer { padding: 0 15px 14px; }
+    .notification-status { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 11px 12px; border-radius: 10px; background: #f5f7f4; }
+    .notification-copy { font-size: 9px; color: #77837a; line-height: 1.5; }
+    .notification-copy strong { display: block; color: #47564c; font-size: 10px; }
+    .notification-status .btn { padding: 8px 10px; white-space: nowrap; font-size: 9px; }
+    .quick-tips { color: #7e8981; padding: 15px 17px; font-size: 10px; line-height: 1.65; }
+    .quick-tips strong { color: #3d5445; }
+    .toast { position: fixed; z-index: 20; bottom: 22px; left: 50%; transform: translate(-50%, 12px); opacity: 0; pointer-events: none; max-width: calc(100% - 30px); color: white; background: #23392c; border-radius: 10px; padding: 11px 15px; box-shadow: 0 8px 25px #14271b30; font-size: 11px; transition: .2s; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .modal-backdrop { position: fixed; z-index: 10; inset: 0; padding: 16px; display: grid; place-items: center; background: #17241e72; }
+    .modal-backdrop[hidden] { display: none; }
+    .dialog { width: min(100%, 440px); max-height: min(90vh, 760px); overflow: auto; padding: 21px; border-radius: 18px; background: white; box-shadow: 0 20px 70px #0003; }
+    .dialog-head { display: flex; justify-content: space-between; align-items: start; margin-bottom: 17px; }
+    .dialog-head h2 { margin: 0; font-size: 17px; letter-spacing: -.3px; }
+    .dialog-head p { margin: 5px 0 0; color: var(--muted); font-size: 10px; }
+    .dialog-close { width: 28px; height: 28px; border: 0; border-radius: 8px; background: #f2f4f1; color: #6e7a71; font-size: 17px; }
+    .type-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; border-radius: 10px; background: #f2f5f2; margin-bottom: 14px; }
+    .type-toggle button { border: 0; border-radius: 8px; background: transparent; padding: 9px; color: #738077; font-size: 11px; font-weight: 700; }
+    .type-toggle button.active { color: var(--green); background: white; box-shadow: 0 1px 4px #263b2a12; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .field { display: grid; gap: 6px; margin-bottom: 12px; }
+    .field.full { grid-column: 1 / -1; }
+    .field label { color: #58665d; font-size: 10px; font-weight: 700; }
+    .field input, .field select { width: 100%; height: 39px; padding: 0 10px; outline: none; border: 1px solid #e2e8e2; border-radius: 9px; color: #2b382f; background: white; font-size: 11px; }
+    .field input:focus, .field select:focus { border-color: #8eb29a; box-shadow: 0 0 0 3px #26624713; }
+    .form-actions { display: flex; justify-content: end; gap: 8px; margin-top: 6px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    @media (max-width: 960px) {
+      .app { padding-inline: 22px; }
+      .content-grid { grid-template-columns: minmax(0, 1fr) 300px; gap: 12px; }
+      .left-column, .right-column { gap: 12px; }
+    }
+    @media (max-width: 740px) {
+      .app { padding: 15px 14px 30px; }
+      header { margin-bottom: 23px; }
+      .privacy { display: none; }
+      .page-heading { align-items: start; }
+      .page-heading p { max-width: 240px; line-height: 1.5; }
+      .month-picker { margin-top: 15px; gap: 5px; }
+      .month-picker span { min-width: 88px; font-size: 10px; }
+      .summary { gap: 8px; }
+      .summary-card { padding: 13px 12px; min-height: 104px; }
+      .summary-top { font-size: 9px; }
+      .summary-icon { width: 25px; height: 25px; }
+      .summary-value { font-size: 19px; }
+      .summary-caption { font-size: 9px; }
+      .content-grid { grid-template-columns: 1fr; }
+      .right-column { grid-template-columns: 1fr 1fr; align-items: start; }
+    }
+    @media (max-width: 480px) {
+      .header-actions .btn { padding: 10px; font-size: 10px; }
+      .logo { width: 37px; height: 37px; }
+      .brand-title { font-size: 13px; }
+      .page-heading { flex-direction: column; gap: 12px; }
+      .month-picker { margin-top: 0; align-self: flex-start; }
+      .summary { grid-template-columns: 1fr 1fr; }
+      .summary-card.balance { grid-column: 1 / -1; min-height: 98px; }
+      .summary-value { font-size: 18px; }
+      .balance .summary-value { font-size: 25px; }
+      .right-column { grid-template-columns: 1fr; }
+      .transaction { grid-template-columns: 34px minmax(0, 1fr) auto 24px; gap: 7px; }
+      .transactions-toolbar .filter-select { max-width: 105px; }
+      .form-grid { grid-template-columns: 1fr; gap: 0; }
+      .field.full { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7.5 12 4l7 3.5v9L12 20l-7-3.5v-9Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m5.5 7.8 6.5 3.5 6.5-3.5M12 11.5V20" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+        <div><div class="brand-title">Le mie finanze</div><div class="brand-subtitle">Il tuo spazio personale</div></div>
+      </div>
+      <div class="header-actions">
+        <span class="privacy"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3 5 6v5c0 4.5 2.8 7.8 7 10 4.2-2.2 7-5.5 7-10V6l-7-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Solo sul tuo dispositivo</span>
+        <button class="btn btn-primary" id="add-transaction"><span aria-hidden="true">＋</span> Nuova operazione</button>
+      </div>
+    </header>
+
+    <div class="page-heading">
+      <div><div class="eyebrow">Panoramica personale</div><h1>Le tue finanze, in ordine.</h1><p>Entrate, uscite e promemoria in un unico posto.</p></div>
+      <div class="month-picker" aria-label="Seleziona mese"><button id="prev-month" aria-label="Mese precedente">‹</button><span id="month-label"></span><button id="next-month" aria-label="Mese successivo">›</button></div>
+    </div>
+
+    <section class="summary" aria-label="Riepilogo del mese">
+      <article class="summary-card balance"><div class="summary-top"><span>Disponibilità del mese</span><span class="summary-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v18m5-13.5C17 6.1 15.5 5 12 5S7 6.1 7 7.5 8.2 9.8 12 11s5 2.1 5 3.5-1.5 2.5-5 2.5-5-1.1-5-2.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span></div><div class="summary-value" id="balance">€ 0,00</div><div class="summary-caption">Entrate meno uscite registrate</div></article>
+      <article class="summary-card"><div class="summary-top"><span>Entrate</span><span class="summary-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 19V5m-6 6 6-6 6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div><div class="summary-value" id="income">€ 0,00</div><div class="summary-caption">Nel mese selezionato</div></article>
+      <article class="summary-card"><div class="summary-top"><span>Uscite</span><span class="summary-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14m6-6-6 6-6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div><div class="summary-value expense" id="expenses">€ 0,00</div><div class="summary-caption">Nel mese selezionato</div></article>
+    </section>
+
+    <div class="content-grid">
+      <div class="left-column">
+        <section class="panel" aria-labelledby="transactions-title">
+          <div class="panel-head">
+            <div><div class="panel-title" id="transactions-title">Movimenti</div><div class="panel-description">Le operazioni del mese selezionato</div></div>
+            <div class="transactions-toolbar"><label class="sr-only" for="type-filter">Filtra movimenti</label><select class="filter-select" id="type-filter"><option value="all">Tutti</option><option value="expense">Uscite</option><option value="income">Entrate</option></select></div>
+          </div>
+          <div class="transaction-list" id="transaction-list"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><div><div class="panel-title">Andamento uscite</div><div class="panel-description">Confronto degli ultimi 6 mesi</div></div></div>
+          <div class="panel-body"><div class="chart" id="chart" aria-label="Grafico uscite degli ultimi sei mesi"></div></div>
+        </section>
+      </div>
+
+      <aside class="right-column">
+        <section class="panel">
+          <div class="panel-head"><div><div class="panel-title">Budget mensile</div><div class="panel-description">Tieni d’occhio le tue uscite</div></div><button class="budget-edit" id="edit-budget">Modifica</button></div>
+          <div class="panel-body"><div class="budget-row"><span class="budget-label">Speso / budget</span><span class="budget-value" id="budget-value">€ 0,00 / € 0,00</span></div><div class="progress"><span id="budget-progress"></span></div><div class="budget-note" id="budget-note"></div></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><div><div class="panel-title">Promemoria</div><div class="panel-description">Bollette e scadenze da ricordare</div></div><button class="budget-edit" id="add-reminder">＋ Aggiungi</button></div>
+          <div class="reminder-list" id="reminder-list"></div>
+          <div class="reminder-footer"><div class="notification-status"><div class="notification-copy" id="notification-copy"><strong>Notifiche del browser</strong>Attivale per ricevere avvisi</div><button class="btn btn-light" id="enable-notifications">Attiva</button></div></div>
+        </section>
+        <section class="panel"><div class="quick-tips"><strong>I tuoi dati restano privati.</strong><br>Le operazioni e i promemoria vengono salvati nel browser di questo dispositivo. Esporta periodicamente una copia di sicurezza.</div><div style="padding:0 17px 15px"><button class="btn btn-light" id="export-data" style="width:100%">Esporta dati CSV</button></div></section>
+      </aside>
+    </div>
+  </main>
+
+  <div class="modal-backdrop" id="transaction-modal" hidden>
+    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="transaction-dialog-title">
+      <div class="dialog-head"><div><h2 id="transaction-dialog-title">Nuova operazione</h2><p>Aggiungi un’entrata o un’uscita alle tue finanze.</p></div><button class="dialog-close" data-close="transaction-modal" aria-label="Chiudi">×</button></div>
+      <form id="transaction-form">
+        <div class="type-toggle"><button type="button" class="active" data-type="expense">Uscita</button><button type="button" data-type="income">Entrata</button></div>
+        <input type="hidden" id="transaction-type" value="expense">
+        <div class="form-grid">
+          <div class="field full"><label for="description">Descrizione</label><input id="description" required maxlength="80" placeholder="Es. Spesa supermercato"></div>
+          <div class="field"><label for="amount">Importo (€)</label><input id="amount" required type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0,00"></div>
+          <div class="field"><label for="category">Categoria</label><select id="category"></select></div>
+          <div class="field full"><label for="transaction-date">Data</label><input id="transaction-date" required type="date"></div>
+        </div>
+        <div class="form-actions"><button type="button" class="btn btn-light" data-close="transaction-modal">Annulla</button><button class="btn btn-primary" type="submit">Salva operazione</button></div>
+      </form>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="reminder-modal" hidden>
+    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="reminder-dialog-title">
+      <div class="dialog-head"><div><h2 id="reminder-dialog-title">Nuovo promemoria</h2><p>Imposta un avviso per una bolletta o una scadenza.</p></div><button class="dialog-close" data-close="reminder-modal" aria-label="Chiudi">×</button></div>
+      <form id="reminder-form">
+        <div class="field"><label for="reminder-title">Cosa vuoi ricordare?</label><input id="reminder-title" required maxlength="80" placeholder="Es. Pagare la bolletta luce"></div>
+        <div class="form-grid">
+          <div class="field"><label for="reminder-date">Data</label><input id="reminder-date" required type="date"></div>
+          <div class="field"><label for="reminder-time">Ora dell’avviso</label><input id="reminder-time" required type="time" value="09:00"></div>
+          <div class="field full"><label for="reminder-amount">Importo da ricordare (€) · facoltativo</label><input id="reminder-amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="Lascia vuoto se non serve"></div>
+        </div>
+        <div class="form-actions"><button type="button" class="btn btn-light" data-close="reminder-modal">Annulla</button><button class="btn btn-primary" type="submit">Salva promemoria</button></div>
+      </form>
+    </section>
+  </div>
+  <div class="modal-backdrop" id="budget-modal" hidden>
+    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="budget-dialog-title">
+      <div class="dialog-head"><div><h2 id="budget-dialog-title">Budget mensile</h2><p>Imposta il limite che vuoi dedicare alle uscite ogni mese.</p></div><button class="dialog-close" data-close="budget-modal" aria-label="Chiudi">×</button></div>
+      <form id="budget-form">
+        <div class="field"><label for="budget-input">Budget mensile (€)</label><input id="budget-input" required type="number" min="0" step="0.01" inputmode="decimal"></div>
+        <div class="form-actions"><button type="button" class="btn btn-light" data-close="budget-modal">Annulla</button><button class="btn btn-primary" type="submit">Salva budget</button></div>
+      </form>
+    </section>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (() => {
+      "use strict";
+      const STORAGE_KEY = "le-mie-finanze-v1";
+      const expenseCategories = ["Casa", "Spesa", "Trasporti", "Salute", "Svago", "Bollette", "Abbonamenti", "Shopping", "Altro"];
+      const incomeCategories = ["Stipendio", "Rimborsi", "Regali", "Vendite", "Altro"];
+      const categoryIcons = { Casa: "🏠", Spesa: "🛒", Trasporti: "🚗", Salute: "💊", Svago: "🎟️", Bollette: "💡", Abbonamenti: "📱", Shopping: "🛍️", Altro: "📌", Stipendio: "💼", Rimborsi: "↩️", Regali: "🎁", Vendite: "📦" };
+      const euro = value => new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(value);
+      const localDate = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      const now = new Date();
+      let selectedMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      let state = loadState();
+      let reminderTimer;
+
+      function loadState() {
+        try {
+          const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+          return {
+            transactions: Array.isArray(stored.transactions) ? stored.transactions.filter(item =>
+              item && typeof item.id === "string" && (item.type === "income" || item.type === "expense") &&
+              Number.isFinite(item.amount) && item.amount > 0 && typeof item.date === "string"
+            ) : [],
+            reminders: Array.isArray(stored.reminders) ? stored.reminders.filter(item =>
+              item && typeof item.id === "string" && typeof item.title === "string" &&
+              typeof item.date === "string" && typeof item.time === "string"
+            ) : [],
+            budget: Number.isFinite(stored.budget) && stored.budget >= 0 ? stored.budget : 1500
+          };
+        } catch (error) {
+          console.error("Non è stato possibile leggere i dati salvati.", error);
+          return { transactions: [], reminders: [], budget: 1500 };
+        }
+      }
+      function saveState() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+          return true;
+        } catch (error) {
+          console.error("Non è stato possibile salvare i dati.", error);
+          toast("Salvataggio non riuscito: controlla lo spazio disponibile nel browser.");
+          return false;
+        }
+      }
+      function toast(message) {
+        const el = document.getElementById("toast");
+        el.textContent = message;
+        el.classList.add("show");
+        clearTimeout(toast.timer);
+        toast.timer = setTimeout(() => el.classList.remove("show"), 2800);
+      }
+      function monthKey(date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`; }
+      function formatDate(date) { return new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "short", year: "numeric" }).format(new Date(`${date}T12:00:00`)); }
+      function currentTransactions() { return state.transactions.filter(item => item.date.startsWith(monthKey(selectedMonth))); }
+      function renderSummary() {
+        const items = currentTransactions();
+        const income = items.filter(item => item.type === "income").reduce((sum, item) => sum + item.amount, 0);
+        const expenses = items.filter(item => item.type === "expense").reduce((sum, item) => sum + item.amount, 0);
+        document.getElementById("income").textContent = euro(income);
+        document.getElementById("expenses").textContent = euro(expenses);
+        document.getElementById("balance").textContent = euro(income - expenses);
+        document.getElementById("month-label").textContent = new Intl.DateTimeFormat("it-IT", { month: "long", year: "numeric" }).format(selectedMonth);
+        document.getElementById("budget-value").textContent = `${euro(expenses)} / ${euro(state.budget)}`;
+        const progress = document.getElementById("budget-progress");
+        const percent = state.budget > 0 ? Math.min((expenses / state.budget) * 100, 100) : (expenses > 0 ? 100 : 0);
+        progress.style.width = `${percent}%`;
+        progress.classList.toggle("over", expenses > state.budget);
+        const note = state.budget === 0
+          ? "Imposta un budget per monitorare le uscite."
+          : expenses > state.budget
+            ? `Hai superato il budget di ${euro(expenses - state.budget)}.`
+            : `Ti restano ${euro(state.budget - expenses)} del budget.`;
+        document.getElementById("budget-note").textContent = note;
+      }
+      function renderTransactions() {
+        const filter = document.getElementById("type-filter").value;
+        const items = currentTransactions()
+          .filter(item => filter === "all" || item.type === filter)
+          .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
+        const root = document.getElementById("transaction-list");
+        if (!items.length) {
+          root.innerHTML = `<div class="empty"><strong>${filter === "all" ? "Ancora nessun movimento" : "Nessun movimento qui"}</strong>${filter === "all" ? "Aggiungi la tua prima entrata o uscita." : "Prova a cambiare filtro."}</div>`;
+          return;
+        }
+        root.innerHTML = items.map(item => `<article class="transaction">
+          <span class="transaction-icon">${categoryIcons[item.category] || "📌"}</span>
+          <div><div class="transaction-name">${escapeHtml(item.description)}</div><div class="transaction-meta">${escapeHtml(item.category)} · ${formatDate(item.date)}</div></div>
+          <div class="transaction-amount ${item.type}">${item.type === "income" ? "+" : "−"} ${euro(item.amount)}</div>
+          <button class="transaction-delete" data-delete-transaction="${item.id}" aria-label="Elimina ${escapeHtml(item.description)}">×</button>
+        </article>`).join("");
+      }
+      function renderChart() {
+        const chart = document.getElementById("chart");
+        const months = [];
+        for (let offset = 5; offset >= 0; offset--) months.push(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - offset, 1));
+        const totals = months.map(month => state.transactions
+          .filter(item => item.type === "expense" && item.date.startsWith(monthKey(month)))
+          .reduce((sum, item) => sum + item.amount, 0));
+        const max = Math.max(...totals, 1);
+        chart.innerHTML = months.map((month, i) => {
+          const height = totals[i] ? Math.max(5, (totals[i] / max) * 96) : 0;
+          return `<div class="chart-column ${i === months.length - 1 ? "current" : ""}" title="${escapeHtml(new Intl.DateTimeFormat("it-IT", { month: "long", year: "numeric" }).format(month))}: ${euro(totals[i])}">
+            <div class="chart-track"><div class="chart-bar" style="height:${height}px"></div></div>
+            <span class="chart-label">${new Intl.DateTimeFormat("it-IT", { month: "short" }).format(month).replace(".", "")}</span>
+          </div>`;
+        }).join("");
+      }
+      function reminderDateTime(item) { return new Date(`${item.date}T${item.time}:00`); }
+      function renderReminders() {
+        const items = [...state.reminders].sort((a, b) => reminderDateTime(a) - reminderDateTime(b));
+        const root = document.getElementById("reminder-list");
+        if (!items.length) {
+          root.innerHTML = '<div class="empty"><strong>Nessun promemoria</strong>Aggiungi una scadenza da ricordare.</div>';
+          return;
+        }
+        root.innerHTML = items.map(item => {
+          const past = reminderDateTime(item) < new Date();
+          return `<article class="reminder">
+            <span class="reminder-icon" aria-hidden="true">${past ? "⏰" : "🔔"}</span>
+            <div><div class="reminder-title">${escapeHtml(item.title)}</div><div class="reminder-date ${past ? "reminder-past" : ""}">${past ? "Scaduto · " : ""}${formatDate(item.date)} alle ${escapeHtml(item.time)}</div></div>
+            <div class="reminder-buttons">${item.amount ? `<span class="reminder-amount">${euro(item.amount)}</span>` : ""}<button data-dismiss-reminder="${item.id}" aria-label="Completa promemoria ${escapeHtml(item.title)}" title="Segna come fatto">✓</button><button data-delete-reminder="${item.id}" aria-label="Elimina promemoria ${escapeHtml(item.title)}" title="Elimina">×</button></div>
+          </article>`;
+        }).join("");
+      }
+      function renderNotifications() {
+        const copy = document.getElementById("notification-copy");
+        const button = document.getElementById("enable-notifications");
+        if (!("Notification" in window)) {
+          copy.innerHTML = "<strong>Notifiche non supportate</strong>Il browser non supporta le notifiche.";
+          button.hidden = true;
+        } else if (Notification.permission === "granted") {
+          copy.innerHTML = "<strong>Notifiche attive</strong>Gli avvisi appaiono quando questa pagina è aperta.";
+          button.textContent = "Attive";
+          button.disabled = true;
+        } else if (Notification.permission === "denied") {
+          copy.innerHTML = "<strong>Notifiche bloccate</strong>Puoi abilitarle dalle impostazioni del browser.";
+          button.textContent = "Bloccate";
+          button.disabled = true;
+        } else {
+          copy.innerHTML = "<strong>Notifiche del browser</strong>Attivale per ricevere avvisi.";
+          button.textContent = "Attiva";
+          button.disabled = false;
+        }
+      }
+      function render() { renderSummary(); renderTransactions(); renderChart(); renderReminders(); renderNotifications(); }
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
+      }
+      function updateCategories() {
+        const type = document.getElementById("transaction-type").value;
+        document.getElementById("category").innerHTML = (type === "income" ? incomeCategories : expenseCategories)
+          .map(category => `<option>${category}</option>`).join("");
+      }
+      function openModal(id) {
+        document.getElementById(id).hidden = false;
+        const firstInput = document.querySelector(`#${id} input:not([type=hidden])`);
+        if (firstInput) firstInput.focus();
+      }
+      function closeModal(id) {
+        document.getElementById(id).hidden = true;
+      }
+      function checkReminders() {
+        if (!("Notification" in window) || Notification.permission !== "granted") return;
+        const now = Date.now();
+        let changed = false;
+        for (const reminder of state.reminders) {
+          if (reminder.notifiedAt) continue;
+          const due = reminderDateTime(reminder).getTime();
+          if (due <= now && due > now - 24 * 60 * 60 * 1000) {
+            new Notification("Promemoria — Le mie finanze", {
+              body: `${reminder.title}${reminder.amount ? ` · ${euro(reminder.amount)}` : ""}`,
+              tag: reminder.id
+            });
+            reminder.notifiedAt = new Date().toISOString();
+            changed = true;
+          }
+        }
+        if (changed) { saveState(); renderReminders(); }
+      }
+      function startReminderChecks() {
+        clearInterval(reminderTimer);
+        checkReminders();
+        reminderTimer = setInterval(checkReminders, 30 * 1000);
+      }
+
+      document.getElementById("add-transaction").addEventListener("click", () => {
+        document.getElementById("transaction-date").value = localDate(new Date());
+        openModal("transaction-modal");
+      });
+      document.querySelector(".type-toggle").addEventListener("click", event => {
+        const button = event.target.closest("[data-type]");
+        if (!button) return;
+        document.querySelectorAll(".type-toggle button").forEach(item => item.classList.toggle("active", item === button));
+        document.getElementById("transaction-type").value = button.dataset.type;
+        updateCategories();
+      });
+      document.getElementById("transaction-form").addEventListener("submit", event => {
+        event.preventDefault();
+        const amount = Number(document.getElementById("amount").value);
+        if (!Number.isFinite(amount) || amount <= 0) { toast("Inserisci un importo valido."); return; }
+        state.transactions.push({
+          id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+          description: document.getElementById("description").value.trim(),
+          amount: Math.round(amount * 100) / 100,
+          category: document.getElementById("category").value,
+          date: document.getElementById("transaction-date").value,
+          type: document.getElementById("transaction-type").value,
+          createdAt: Date.now()
+        });
+        if (saveState()) {
+          closeModal("transaction-modal");
+          event.target.reset();
+          document.getElementById("transaction-date").value = localDate(new Date());
+          document.getElementById("transaction-type").value = "expense";
+          document.querySelectorAll(".type-toggle button").forEach((button, i) => button.classList.toggle("active", i === 0));
+          updateCategories();
+          render();
+          toast("Operazione salvata.");
+        }
+      });
+      document.getElementById("transaction-list").addEventListener("click", event => {
+        const button = event.target.closest("[data-delete-transaction]");
+        if (!button) return;
+        state.transactions = state.transactions.filter(item => item.id !== button.dataset.deleteTransaction);
+        if (saveState()) render();
+      });
+      document.getElementById("type-filter").addEventListener("change", renderTransactions);
+      document.getElementById("prev-month").addEventListener("click", () => { selectedMonth = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1, 1); render(); });
+      document.getElementById("next-month").addEventListener("click", () => { selectedMonth = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 1); render(); });
+      document.getElementById("edit-budget").addEventListener("click", () => {
+        document.getElementById("budget-input").value = state.budget.toFixed(2);
+        openModal("budget-modal");
+      });
+      document.getElementById("budget-form").addEventListener("submit", event => {
+        event.preventDefault();
+        const value = Number(document.getElementById("budget-input").value);
+        if (!Number.isFinite(value) || value < 0) { toast("Inserisci un budget valido."); return; }
+        state.budget = Math.round(value * 100) / 100;
+        if (saveState()) {
+          closeModal("budget-modal");
+          renderSummary();
+          toast("Budget mensile aggiornato.");
+        }
+      });
+      document.getElementById("add-reminder").addEventListener("click", () => {
+        document.getElementById("reminder-date").value = localDate(new Date());
+        openModal("reminder-modal");
+      });
+      document.getElementById("reminder-form").addEventListener("submit", event => {
+        event.preventDefault();
+        const amountInput = document.getElementById("reminder-amount").value;
+        const amount = amountInput ? Number(amountInput) : null;
+        if (amountInput && (!Number.isFinite(amount) || amount <= 0)) { toast("Inserisci un importo valido o lascia il campo vuoto."); return; }
+        const reminder = {
+          id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+          title: document.getElementById("reminder-title").value.trim(),
+          date: document.getElementById("reminder-date").value,
+          time: document.getElementById("reminder-time").value,
+          amount: amount ? Math.round(amount * 100) / 100 : null,
+          notifiedAt: null
+        };
+        if (reminderDateTime(reminder) <= new Date()) { toast("Scegli una data e un’ora future."); return; }
+        state.reminders.push(reminder);
+        if (saveState()) {
+          closeModal("reminder-modal");
+          event.target.reset();
+          document.getElementById("reminder-time").value = "09:00";
+          renderReminders();
+          toast("Promemoria salvato.");
+        }
+      });
+      document.getElementById("reminder-list").addEventListener("click", event => {
+        const done = event.target.closest("[data-dismiss-reminder]");
+        const remove = event.target.closest("[data-delete-reminder]");
+        if (!done && !remove) return;
+        const id = (done || remove).dataset.dismissReminder || (done || remove).dataset.deleteReminder;
+        state.reminders = state.reminders.filter(item => item.id !== id);
+        if (saveState()) renderReminders();
+      });
+      document.getElementById("enable-notifications").addEventListener("click", async () => {
+        if (!("Notification" in window)) { toast("Questo browser non supporta le notifiche."); return; }
+        try {
+          const permission = await Notification.requestPermission();
+          renderNotifications();
+          if (permission === "granted") {
+            toast("Notifiche attivate. Tieni aperta questa pagina per ricevere gli avvisi.");
+            startReminderChecks();
+          } else if (permission === "denied") toast("Permesso negato. Puoi abilitarlo dalle impostazioni del browser.");
+        } catch (error) {
+          console.error("Richiesta di notifica non riuscita.", error);
+          toast("Non è stato possibile attivare le notifiche.");
+        }
+      });
+      document.getElementById("export-data").addEventListener("click", () => {
+        const header = ["tipo", "descrizione", "importo_eur", "categoria", "data", "ora"];
+        const rows = [
+          ...state.transactions.map(item => [item.type === "income" ? "entrata" : "uscita", item.description, item.amount.toFixed(2), item.category, item.date, ""]),
+          ...state.reminders.map(item => ["promemoria", item.title, item.amount ? item.amount.toFixed(2) : "", "", item.date, item.time])
+        ];
+        const csv = [header, ...rows].map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(";")).join("\r\n");
+        const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `le-mie-finanze-${localDate(new Date())}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+      });
+      document.querySelectorAll("[data-close]").forEach(button => button.addEventListener("click", () => closeModal(button.dataset.close)));
+      document.querySelectorAll(".modal-backdrop").forEach(backdrop => backdrop.addEventListener("click", event => {
+        if (event.target === backdrop) closeModal(backdrop.id);
+      }));
+      document.addEventListener("keydown", event => {
+        if (event.key === "Escape") document.querySelectorAll(".modal-backdrop:not([hidden])").forEach(modal => closeModal(modal.id));
+      });
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) checkReminders(); });
+      updateCategories();
+      render();
+      startReminderChecks();
+    })();
+  </script>
+</body>
+</html>
