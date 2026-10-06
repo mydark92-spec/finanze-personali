@@ -25,6 +25,10 @@ create table if not exists public.push_subscriptions (
   p256dh text not null,
   auth text not null,
   created_at timestamptz not null default now(),
+  check (
+    endpoint like 'https://fcm.googleapis.com/%'
+    or endpoint like 'https://web.push.apple.com/%'
+  ),
   unique (user_id, endpoint)
 );
 
@@ -63,8 +67,8 @@ as $$
       and r.due_at <= now()
       and (r.claimed_at is null or r.claimed_at < now() - interval '10 minutes')
     order by r.due_at
-    for update skip locked
     limit greatest(1, least(batch_size, 200))
+    for update skip locked
   ),
   claimed as (
     update public.reminders as r
