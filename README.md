@@ -1,20 +1,21 @@
 # Le mie finanze
 
-Piccola app personale per registrare entrate e uscite, seguire un budget mensile e ricordare bollette e scadenze.
+App personale per tenere traccia di entrate, uscite, budget e promemoria.
 
-## Uso
+## Apri l'app
 
-Apri `index.html` in un browser moderno. L'app non richiede installazione né un server; per le notifiche del browser e' consigliato servirla da `localhost` o da GitHub Pages via HTTPS.
+Visita [Le mie finanze](https://mydark92-spec.github.io/finanze-personali/) dal computer o dal telefono. Puoi aggiungerla ai preferiti o alla schermata Home del telefono dal menu del browser.
 
-## Pubblicare con GitHub Pages
+## Funzioni
 
-1. Crea un repository GitHub e carica `index.html` e questo README nella cartella principale.
-2. Nel repository apri **Settings → Pages**.
-3. In **Build and deployment**, seleziona **Deploy from a branch**, il branch `main` e la cartella `/ (root)`, quindi salva.
-4. Apri l'indirizzo Pages mostrato nella stessa pagina anche dal telefono.
+- Registra entrate e uscite, con categorie e data.
+- Consulta riepiloghi mensili e andamento delle spese.
+- Imposta e modifica il budget mensile.
+- Crea promemoria con data, ora e importo facoltativo.
+- Esporta i movimenti e i promemoria in CSV.
 
-## Dati e privacy
+## Privacy e limiti
 
-Movimenti, budget e promemoria sono salvati in `localStorage` nel browser del dispositivo. Non sono inclusi nel repository e non si sincronizzano automaticamente fra computer e telefono. Usa **Esporta dati CSV** per conservare una copia. Non inserire credenziali bancarie o dati di carte.
+I movimenti, il budget e i promemoria sono salvati nel browser del dispositivo. Non sono contenuti in questo repository e non si sincronizzano automaticamente tra telefono e computer: ogni dispositivo ha i propri dati. Usa **Esporta dati CSV** per conservarne una copia. Non inserire credenziali bancarie o dati di carte.
 
-Le notifiche sono locali al browser: occorre concedere il permesso e lasciare l'app aperta affinche' possa controllare le scadenze.
+Per gli avvisi, consenti le notifiche del browser. L'app controlla le scadenze quando la pagina è aperta; non invia notifiche mentre è chiusa.
